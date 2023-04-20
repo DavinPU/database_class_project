@@ -3,6 +3,7 @@ import streamlit as st
 import re
 from streamlit import session_state
 import time
+from movie_recommender import recommend
 
 
 def getMaxUserID():
@@ -96,13 +97,22 @@ def watched_movies():
     rating_score = st.text_input('Enter your movie rating:', value="")
 
     if st.button('Add'):
-        if rating_score == '':
-            st.error("Please enter a movie rating")
+        try:
+            rating_score = int(rating_score)
+        except Exception:
+            pass
+
+        if type(rating_score) != int:
+            st.error("Please enter a valid movie rating (1-5)")
         else:
             movie = get_movie(movie_title)
             if movie:
                 watched_movie = db['WatchedMovies'].find_one({'userId': userId, 'movieId': movie['id']})
                 if not watched_movie:
+                    if rating_score > 5:
+                        rating_score = 5
+                    if rating_score < 0:
+                        rating_score = 0
                     db['WatchedMovies'].insert_one({'userId': userId, 'movieId': movie['id'], 'rating': rating_score})
                     st.success(f"Added {movie_title} to your watched movies!")
                 else:
@@ -114,7 +124,10 @@ def watched_movies():
             time.sleep(.5)
             st.experimental_rerun()
 
-    menu_button = st.button("Main Menu", on_click=toggle_watch_movies())
+    menu_button = st.button("Main Menu", on_click=toggle_watch_movies)
+
+def update_movies():
+    pass
 
 
 def main():
@@ -125,6 +138,19 @@ def main():
     st.title("Movie Recommendation System")
 
     st.caption("Based on your current watch list, here are some recommended movies: ")
+    recommend_df = recommend(db, session_state)
+
+    print(len(recommend_df))
+    results_df = recommend_df.head(10)
+
+    st.table(results_df[['title', 'release_year', 'genres', 'language']])
+    get_recommend_button = st.button("Update Movies", on_click=update_movies)
+
+    # st.header('Recommended movies')
+    # for movie_index in top_n_movies_indices:
+    #     movie_id = movie_ids[not_watched_movies_indices[movie_index]]
+    #     movie_data = db['movies'].find_one({'id': movie_id})
+    #     st.write(movie_data['original_title'] + ' (' + str(movie_data['release_year']) + ')')
 
     # if movie_title:
     #     recommend_movie = get_movie(movie_title)
