@@ -76,7 +76,7 @@ def recommend(db, session_state):
             pass
 
     movie_dicts = [{'title': movie[0], 'release_year': movie[1], 'genres': movie[2], 'language': movie[3],
-                    'budget': movie[4], 'populairty': movie[5]} for movie in movie_return_strings]
+                    'budget': movie[4], 'popularity': movie[5]} for movie in movie_return_strings]
 
     print("CHECKPOINT 2")
     movie_df = pd.DataFrame(movie_dicts)
@@ -84,8 +84,19 @@ def recommend(db, session_state):
     # return this dataframe, and then we can easily filter out movies based on user specified preferences
     return movie_df
 
-# if __name__ == '__main__':
-#     client = pymongo.MongoClient("mongodb+srv://milleda:rav77e88n@cluster1.seq1fwn.mongodb.net/test")
-#
-#     db = client.movies_db
-#     recommend()
+if __name__ == '__main__':
+    client = pymongo.MongoClient("mongodb+srv://milleda:rav77e88n@cluster1.seq1fwn.mongodb.net/test")
+
+    db = client.movies_db
+
+    pipeline = [
+        {"$group": {"_id": None, "earliest": {"$min": "$release_year"}, "latest": {"$max": "$release_year"}}}
+    ]
+
+    # Run the aggregation query and print the results
+    result = list(db['movies'].aggregate(pipeline))[0]
+
+    # Print the results
+    print("Earliest release year:", result["earliest"])
+    print("Latest release year:", result["latest"])
+    #recommend()

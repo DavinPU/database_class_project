@@ -4,6 +4,13 @@ import re
 from streamlit import session_state
 import time
 from movie_recommender import recommend
+import pandas as pd
+
+
+
+@st.cache_data
+def cached_recommendation(_db, _session_state):
+    return recommend(db, session_state)
 
 
 def getMaxUserID():
@@ -127,36 +134,57 @@ def watched_movies():
     menu_button = st.button("Main Menu", on_click=toggle_watch_movies)
 
 def update_movies():
+    #print(selected_genres)
     pass
 
 
 def main():
     user = session_state['user']
+    genres_list = ['Animation', 'Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Family',
+              'Fantasy', 'Foreign', 'History', 'Horror', 'Music', 'Mystery', 'Romance', 'Science Fiction', 'Thriller',
+              'War', 'Western']
+
     st.sidebar.write('Hello, ' + user['username'] + '!')
     st.sidebar.button('Go To Watched Movies', on_click=toggle_watch_movies)
 
     st.title("Movie Recommendation System")
 
     st.caption("Based on your current watch list, here are some recommended movies: ")
-    recommend_df = recommend(db, session_state)
+    recommend_df = cached_recommendation(db, session_state).drop_duplicates(subset=['title', 'release_year'])
 
-    print(len(recommend_df))
-    results_df = recommend_df.head(10)
-
-    st.table(results_df[['title', 'release_year', 'genres', 'language']])
     get_recommend_button = st.button("Update Movies", on_click=update_movies)
 
-    # st.header('Recommended movies')
-    # for movie_index in top_n_movies_indices:
-    #     movie_id = movie_ids[not_watched_movies_indices[movie_index]]
-    #     movie_data = db['movies'].find_one({'id': movie_id})
-    #     st.write(movie_data['original_title'] + ' (' + str(movie_data['release_year']) + ')')
+    start_year, end_year = st.sidebar.slider('Range of release years', 1874, 2020, (1874, 2020))
+    selected_genres = st.sidebar.multiselect('Select genres', genres_list)
+    selected_budget = st.sidebar.multiselect('Select budget', ['low', 'mid', 'high'])
 
-    # if movie_title:
-    #     recommend_movie = get_movie(movie_title)
-    #     st.write("We found the movie: ")
-    #     st.write(recommend_movie['original_title'] + " (" + str(recommend_movie['release_year']) + ")")
-    #     st.write(recommend_movie)
+    subset_df = recommend_df[recommend_df['release_year'] >= start_year]
+    subset_df = subset_df[subset_df['release_year'] <= end_year]
+
+    budget_ranges = [0, 10000000, 50000000, recommend_df['budget'].max()]
+    budget_labels = ['low', 'mid', 'high']
+    # Create a new column in the DataFrame with the budget intervals
+    subset_df['budget_range'] = pd.cut(subset_df['budget'], bins=budget_ranges, labels=budget_labels,
+                                           include_lowest=True)
+
+    if selected_budget:
+        subset_df = subset_df[subset_df['budget_range'].isin(selected_budget)]
+
+
+    english_only = st.sidebar.checkbox('English only', value=False)
+    if english_only:
+        subset_df = subset_df[subset_df['language'] == 'en']
+
+    if selected_genres:
+        subset_df = subset_df[subset_df['genres'].apply(lambda x: any(genre in x for genre in selected_genres))]
+
+    results_df = subset_df.head(10)
+
+    st.table(results_df[['title', 'release_year', 'genres', 'language', 'budget']])
+
+
+
+
 
 
 # Press the green button in the gutter to run the script.
