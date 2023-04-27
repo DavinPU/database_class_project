@@ -183,13 +183,23 @@ def main():
     st.table(results_df[['title', 'release_year', 'genres', 'language', 'budget']])
 
 
+@st.cache_resource()
+def init_connection():
+    db_username = st.secrets["mongo"]["username"]
+    db_password = st.secrets["mongo"]["password"]
+    cluster_name = st.secrets["mongo"]["cluster_name"]
 
+    client = pymongo.MongoClient(
+        f"mongodb+srv://{db_username}:{db_password}@{cluster_name}.seq1fwn.mongodb.net/test?retryWrites=true&w=majority"
+    )
 
+    return client
 
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    client = pymongo.MongoClient("mongodb+srv://milleda:rav77e88n@cluster1.seq1fwn.mongodb.net/test")
+    #client = pymongo.MongoClient("mongodb+srv://milleda:rav77e88n@cluster1.seq1fwn.mongodb.net/test")
+    client = init_connection()
 
     db = client.movies_db
     users_collection = db['Users']
